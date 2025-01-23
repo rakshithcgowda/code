@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OHLC Data</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            cursor: pointer;
+            background-color: #f2f2f2;
+        }
+        th.sorted-asc::after {
+            content: " ▲";
+        }
+        th.sorted-desc::after {
+            content: " ▼";
+        }
+    </style>
+</head>
+<body>
+    <h1>OHLC Data</h1>
+    <table id="ohlc-table">
+        <thead>
+            <tr>
+                <th data-column="symbol">Symbol</th>
+                <th data-column="close">Close</th>
+                <th data-column="open_pct_change">Open % Change</th>
+                <th data-column="high_pct_change">High % Change</th>
+                <th data-column="low_pct_change">Low % Change</th>
+                <th data-column="prev_close_pct_change">Prev Close % Change</th>
+                <th data-column="vwap_pct_change">VWAP % Change</th>
+                <th data-column="mid">Mid</th>
+                <th data-column="uhigh">Uhigh</th>
+                <th data-column="llow">Llow</th>
+                <th data-column="uuh">UUH</th>
+                <th data-column="lll">LLL</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Data will be inserted here dynamically -->
+        </tbody>
+    </table>
+
+    <script>
+        let currentSortColumn = null;
+        let currentSortOrder = 'asc';
+
+        function fetchAndUpdateData() {
+            $.getJSON('/latest-data', function (data) {
+                const tbody = $('#ohlc-table tbody');
+                tbody.empty(); // Clear existing rows
+
+                Object.entries(data).forEach(([symbol, details]) => {
+                    const row = `<tr>
+                        <td>${symbol}</td>
+                        <td>${details.close}</td>
+                        <td>${details.open_pct_change}</td>
+                        <td>${details.high_pct_change}</td>
+                        <td>${details.low_pct_change}</td>
+                        <td>${details.prev_close_pct_change}</td>
+                        <td>${details.vwap_pct_change}</td>
+                        <td>${details.mid}</td>
+                        <td>${details.uhigh}</td>
+                        <td>${details.llow}</td>
+                        <td>${details.uuh}</td>
+                        <td>${details.lll}</td>
+                    </tr>`;
+                    tbody.append(row);
+                });
+
+                if (currentSortColumn) {
+                    sortTable(currentSortColumn, currentSortOrder);
+                }
+            });
+        }
+
+        function sortTable(column, order) {
+            const rows = $('#ohlc-table tbody tr').get();
+            rows.sort((a, b) => {
+                const valA = $(a).find(`td:eq(${column})`).text();
+                const valB = $(b).find(`td:eq(${column})`).text();
+                const numA = parseFloat(valA);
+                const numB = parseFloat(valB);
+
+                if (!isNaN(numA) && !isNaN(numB)) {
+                    return order === 'asc' ? numA - numB : numB - numA;
+                } else {
+                    return order === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                }
+            });
+            $('#ohlc-table tbody').append(rows);
+        }
+
+        $(document).ready(function () {
+            // Fetch data initially and then every 5 seconds
+            fetchAndUpdateData();
+            setInterval(fetchAndUpdateData, 4000);
+
+            // Handle column sorting
+            $('#ohlc-table th').on('click', function () {
+                const columnIndex = $(this).index();
+                const column = $(this).data('column');
+
+                if (currentSortColumn === column) {
+                    currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+                } else {
+                    currentSortColumn = column;
+                    currentSortOrder = 'asc';
+                }
+
+                $('#ohlc-table th').removeClass('sorted-asc sorted-desc');
+                $(this).addClass(currentSortOrder === 'asc' ? 'sorted-asc' : 'sorted-desc');
+
+                sortTable(columnIndex, currentSortOrder);
+            });
+        });
+    </script>
+</body>
+</html>
